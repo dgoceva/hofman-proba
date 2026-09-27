@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ICSI симулатор: проба на Hoffman изгледа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #E9ECEE; --panel: #F7F8F9; --ink: #1C242B; --muted: #5B6873; --line: #D3D9DE;
+  --accent: #0F7C83; --scope: #0E141A;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121A22; --panel: #1A242E; --ink: #E6EBEF; --muted: #8E9BA7; --line: #2A3642; --accent: #5CC8C2; }
+}
+:root[data-theme="dark"] { --bg: #121A22; --panel: #1A242E; --ink: #E6EBEF; --muted: #8E9BA7; --line: #2A3642; --accent: #5CC8C2; }
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+header { padding: 18px 24px 6px; max-width: 1400px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+header .notice { margin-top: 6px; font-size: 13.5px; }
+.log { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; }
+.log label { display: block; font-size: 14px; margin: 8px 0 4px; }
+.log input, .log textarea {
+  width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+}
+.log textarea { resize: vertical; min-height: 64px; }
+.log .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+main {
+  max-width: 1400px; margin: 0 auto; padding: 14px 24px 28px;
+  display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 280px; gap: 18px; align-items: start;
+}
+figure { margin: 0; }
+.scope { background: var(--scope); border-radius: 10px; overflow: hidden; line-height: 0; }
+canvas { width: 100%; height: auto; display: block; }
+figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+.controls { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.controls h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.ctl { margin-bottom: 14px; }
+.ctl label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.ctl output { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); margin-top: 4px; }
+.ctl .hint { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+button {
+  font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.status { color: var(--muted); font-size: 12.5px; margin-top: 10px; min-height: 1.2em; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr 1fr; } .controls { grid-column: 1 / -1; } }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; padding: 10px 12px 20px; } header { padding: 14px 12px 4px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Проба на Hoffman изгледа</h1>
+  <p>Изображението се пресмята по физиката на Hoffman контраста: яркостта идва от наклона на дебелината на прозрачните обекти в една посока. Нагласете плъзгачите, докато заприлича на истинския микроскоп, и изпратете предложението си.</p>
+  <p class="notice">Изпратеното се записва: името или инициалите, които въведете, датата и часът, стойностите на плъзгачите и коментарът. При затваряне на страницата последните настройки се записват автоматично. Нищо друго не се събира.</p>
+</header>
+<main>
+  <figure>
+    <div class="scope"><canvas id="cvO" width="860" height="620" aria-label="Ооцит, хванат от holding пипетата, с инжекционната пипета отдясно"></canvas></div>
+    <figcaption>Ооцит, хванат от holding пипетата (вляво), с инжекционната пипета отдясно, около 30x. Полярното телце е на 12 часа.</figcaption>
+  </figure>
+  <figure>
+    <div class="scope"><canvas id="cvS" width="520" height="620" aria-label="Сперматозоиди отблизо и върхът на инжекционната пипета"></canvas></div>
+    <figcaption>Сперматозоиди в PVP отблизо (около 600x): нормален и с удължена глава, и върхът на инжекционната пипета.</figcaption>
+  </figure>
+  <section class="controls" aria-label="Настройки на изгледа">
+    <h2>Настройки</h2>
+    <div class="ctl">
+      <label for="kRel">Сила на релефа <output id="oRel"></output></label>
+      <input id="kRel" type="range" min="0" max="3" step="0.05" value="1.0">
+    </div>
+    <div class="ctl">
+      <label for="kAng">Посока на светлината <output id="oAng"></output></label>
+      <input id="kAng" type="range" min="0" max="345" step="15" value="135">
+      <div class="hint">Откъде „свети“: коя страна на обектите е светла.</div>
+    </div>
+    <div class="ctl">
+      <label for="kFoc">Фокус (ооцит), над дъното <output id="oFoc"></output></label>
+      <input id="kFoc" type="range" min="10" max="150" step="2" value="78">
+      <div class="hint">Мени само лявото изображение. Екваторът на ооцита и пипетите са на 78 µm; вдясно фокусът е винаги на дъното, при сперматозоидите.</div>
+    </div>
+    <div class="ctl">
+      <label for="kGrain">Зърно на фона <output id="oGrain"></output></label>
+      <input id="kGrain" type="range" min="0" max="1" step="0.05" value="0.4">
+    </div>
+    <div class="ctl">
+      <label for="kAbs">Плътност на цитоплазмата <output id="oAbs"></output></label>
+      <input id="kAbs" type="range" min="0" max="0.5" step="0.01" value="0.2">
+    </div>
+    <button id="reset" type="button">Първоначални стойности</button>
+    <div class="status" id="status" role="status"></div>
+    <div class="log">
+      <h2>Предложи този вид</h2>
+      <label for="who">Име или инициали</label>
+      <input id="who" type="text" maxlength="60" autocomplete="name">
+      <label for="note">Коментар</label>
+      <textarea id="note" maxlength="1000" placeholder="Например: пипетата е твърде тъмна, zona е по-дебела"></textarea>
+      <div class="row">
+        <button id="send" type="button" class="primary">Изпрати</button>
+        <button id="copy" type="button">Копирай настройките</button>
+      </div>
+      <div class="status" id="logStatus" role="status"></div>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+/* ============================================================
+   АДРЕС ЗА ЗАПИСВАНЕ: поставете тук адреса на уеб приложението от Google Apps Script
+   (завършва на /exec). Докато е празен, бутонът „Изпрати“ само подсказва да се копират настройките.
+   ============================================================ */
+const LOG_URL = "https://script.google.com/macros/s/AKfycbzvPCpiQBL1WmPwlrGgRG7qL0lri3txfRjcDIxgbqy26WPV8-VC9Fy6iDInT-14SPbD/exec";
+const PAGE_VERSION = "проба 3";
+
+/* ============================================================
+   Hoffman модулационен контраст, пресметнат аналитично.
+   Всеки обект има „оптична дебелина“ (разлика в пречупването × дебелина).
+   Яркост = осветление + сила × наклон на оптичната дебелина в посоката на светлината
+            − плътност × поглъщане;  извън фокуса оптичната дебелина се размива.
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+// --- размери (µm), като в симулатора
+const ZONA_OUT = 78, ZONA_IN = 62, OOPL = 53, PB_R = 5, PB_D = 57, EQ = 78;
+const DN = { zona: 0.04, cyto: 0.014, gran: 0.032, pb: 0.035, glass: 0.085, head: 0.055, tail: 0.05 };
+
+// --- поле за рисуване
+class Field {
+  constructor(canvas, scale, cx, cy) {
+    this.cv = canvas; this.ctx = canvas.getContext("2d");
+    this.W = canvas.width; this.H = canvas.height; this.s = scale; this.cx = cx; this.cy = cy;
+    this.layers = [];
+    this.grain = makeGrain(this.W, this.H, 7 + this.W);
+  }
+  px(x) { return (x - this.cx) * this.s + this.W / 2; }
+  py(y) { return (y - this.cy) * this.s + this.H / 2; }
+  wx(i) { return (i - this.W / 2) / this.s + this.cx; }
+  wy(j) { return (j - this.H / 2) / this.s + this.cy; }
+  layer(heightUm, name) {
+    const L = { name, h: heightUm, opd: new Float32Array(this.W * this.H), abs: new Float32Array(this.W * this.H),
+                bbox: [this.W, this.H, 0, 0], blurred: null, blurredAbs: null };
+    this.layers.push(L); return L;
+  }
+}
+function grow(L, x0, y0, x1, y1) {
+  L.bbox[0] = Math.min(L.bbox[0], x0); L.bbox[1] = Math.min(L.bbox[1], y0);
+  L.bbox[2] = Math.max(L.bbox[2], x1); L.bbox[3] = Math.max(L.bbox[3], y1);
+}
+// обхожда пикселите в правоъгълник (µm) и добавя оптичната дебелина от функция f(x, y) -> [opd, abs]
+function paint(F, L, xa, ya, xb, yb, f) {
+  const i0 = Math.max(0, Math.floor(F.px(xa))), i1 = Math.min(F.W - 1, Math.ceil(F.px(xb)));
+  const j0 = Math.max(0, Math.floor(F.py(ya))), j1 = Math.min(F.H - 1, Math.ceil(F.py(yb)));
+  if (i1 < i0 || j1 < j0) return;
+  grow(L, i0, j0, i1, j1);
+  for (let j = j0; j <= j1; j++) {
+    const y = F.wy(j + 0.5), row = j * F.W;
+    for (let i = i0; i <= i1; i++) {
+      const r = f(F.wx(i + 0.5), y);
+      if (r) { L.opd[row + i] += r[0]; if (r[1]) L.abs[row + i] += r[1]; }
+    }
+  }
+}
+// малко „зрънце“ с формата на гаусово петно
+function splat(F, L, x, y, sigma, amp, absAmp = 0) {
+  const sp = sigma * F.s, R = Math.ceil(sp * 2.5), ci = F.px(x), cj = F.py(y);
+  const i0 = Math.max(0, Math.floor(ci - R)), i1 = Math.min(F.W - 1, Math.ceil(ci + R));
+  const j0 = Math.max(0, Math.floor(cj - R)), j1 = Math.min(F.H - 1, Math.ceil(cj + R));
+  if (i1 < i0 || j1 < j0) return;
+  grow(L, i0, j0, i1, j1);
+  const k = 1 / (2 * sp * sp);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const g = Math.exp(-((i + 0.5 - ci) ** 2 + (j + 0.5 - cj) ** 2) * k);
+    L.opd[j * F.W + i] += amp * g; if (absAmp) L.abs[j * F.W + i] += absAmp * g;
+  }
+}
+// детерминиран генератор на случайни числа (една и съща картина всеки път)
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function makeGrain(W, H, seed) {
+  // фин шум + по-едри меки петна, като прах и неравности по оптиката
+  const r = rng(seed), g = new Float32Array(W * H);
+  for (let i = 0; i < g.length; i++) g[i] = r() - 0.5;
+  const coarse = new Float32Array(W * H), cw = 24;
+  const nx = Math.ceil(W / cw) + 2, ny = Math.ceil(H / cw) + 2, grid = [];
+  for (let k = 0; k < nx * ny; k++) grid.push(r() - 0.5);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const gx = i / cw, gy = j / cw, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    const a = grid[y0 * nx + x0], b = grid[y0 * nx + x0 + 1], c = grid[(y0 + 1) * nx + x0], d = grid[(y0 + 1) * nx + x0 + 1];
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    coarse[j * W + i] = (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
+  }
+  for (let i = 0; i < g.length; i++) g[i] = g[i] * 0.6 + coarse[i] * 0.9;
+  return g;
+}
+
+/* ---------------- обекти ---------------- */
+function addOocyte(F, L, ox, oy, pbAngleDeg) {
+  // zona pellucida: кухо кълбо; цитоплазма: кълбо с гранули; полярно телце: малко кълбо в перивителиновото пространство
+  paint(F, L, ox - ZONA_OUT, oy - ZONA_OUT, ox + ZONA_OUT, oy + ZONA_OUT, (x, y) => {
+    const r2 = (x - ox) ** 2 + (y - oy) ** 2;
+    if (r2 >= ZONA_OUT * ZONA_OUT) return null;
+    let opd = DN.zona * (2 * Math.sqrt(ZONA_OUT * ZONA_OUT - r2) - (r2 < ZONA_IN * ZONA_IN ? 2 * Math.sqrt(ZONA_IN * ZONA_IN - r2) : 0));
+    let ab = 0;
+    if (r2 < OOPL * OOPL) { const t = 2 * Math.sqrt(OOPL * OOPL - r2); opd += DN.cyto * t; ab = t / (2 * OOPL); }
+    return [opd, ab];
+  });
+  // zona е влакнеста и леко неравна: много фини нишки в обвивката
+  const rz = rng(777);
+  for (let n = 0; n < 1600; n++) {
+    const a = rz() * 2 * Math.PI, rr = ZONA_IN + rz() * (ZONA_OUT - ZONA_IN);
+    splat(F, L, ox + Math.cos(a) * rr, oy + Math.sin(a) * rr, 0.5 + rz() * 0.8, (rz() - 0.4) * 0.03);
+  }
+  // гранули в обема на цитоплазмата
+  const r = rng(12345);
+  for (let n = 0; n < 2600; n++) {
+    let p;
+    do { p = [r() * 2 - 1, r() * 2 - 1, r() * 2 - 1]; } while (p[0] ** 2 + p[1] ** 2 + p[2] ** 2 > 1);
+    const rr = OOPL * 0.94, depth = Math.abs(p[2]);
+    splat(F, L, ox + p[0] * rr, oy + p[1] * rr, 0.55 + r() * 0.6, DN.gran * (0.6 + r()) * (1 - 0.6 * depth), 0.02 * (1 - depth));
+  }
+  // полярно телце
+  const a = (pbAngleDeg - 90) * Math.PI / 180, px = ox + Math.cos(a) * PB_D, py = oy + Math.sin(a) * PB_D;
+  paint(F, L, px - PB_R, py - PB_R, px + PB_R, py + PB_R, (x, y) => {
+    const r2 = (x - px) ** 2 + (y - py) ** 2;
+    return r2 < PB_R * PB_R ? [DN.pb * 2 * Math.sqrt(PB_R * PB_R - r2), 0.2] : null;
+  });
+}
+
+// стъклена тръбичка: дебелината на стената, видяна отгоре, на разстояние y от оста
+function tubeT(y, ro, ri) {
+  const ay = Math.abs(y);
+  if (ay >= ro) return 0;
+  return 2 * Math.sqrt(ro * ro - ay * ay) - (ay < ri ? 2 * Math.sqrt(ri * ri - ay * ay) : 0);
+}
+function addHoldingPipette(F, layers, tipX, y0, side) {
+  // holding пипета: дебела тръбичка с полиран, заоблен край (торус) и отвор в средата
+  const RO = 46, RI = 11, RM = (RO + RI) / 2, RR = (RO - RI) / 2;
+  const segs = [[0, 110, layers[0]], [110, 260, layers[1]], [260, 900, layers[2]]];
+  for (const [d0, d1, L] of segs) {
+    const xa = side < 0 ? tipX - d1 : tipX + d0, xb = side < 0 ? tipX - d0 : tipX + d1;
+    paint(F, L, xa, y0 - RO, xb, y0 + RO, (x, y) => {
+      const dd = side < 0 ? tipX - x : x - tipX;
+      if (dd < 0) return null;
+      // зад полирания връх каналът се разширява и стените стават по-тънки
+      let ro = RO, ri = RI + (RO * 0.72 - RI) * Math.min(1, Math.max(0, dd - RR) / 45);
+      if (dd < RR) {                                // заобленият край
+        const k = Math.sqrt(Math.max(0, 1 - ((RR - dd) / RR) ** 2));
+        ro = RM + RR * k; ri = RM - RR * k;
+      }
+      const t = tubeT(y - y0, ro, ri);
+      return t > 0 ? [DN.glass * t, 0.015 * t / RR] : null;
+    });
+  }
+}
+function addInjectionPipette(F, layers, tipX, y0, side) {
+  // инжекционна пипета: тънък конус със скосен остър връх; стената се удебелява назад
+  const outer = d => Math.min(30, 3.4 + 0.075 * d), inner = d => Math.max(outer(d) - 0.8 - 0.022 * d, 1.8);
+  const BEV = 9;                                    // дължина на скоса, µm
+  const segs = [[-2, 120, layers[0]], [120, 280, layers[1]], [280, 900, layers[2]]];
+  for (const [d0, d1, L] of segs) {
+    const xa = side > 0 ? tipX + d0 : tipX - d1, xb = side > 0 ? tipX + d1 : tipX - d0;
+    paint(F, L, xa, y0 - 31, xb, y0 + 31, (x, y) => {
+      const dd = side > 0 ? x - tipX : tipX - x;
+      const ro0 = outer(Math.max(0, dd));
+      const start = BEV * ((y - y0) + ro0) / (2 * ro0);        // скосът: горната страна е най-отпред
+      const d = dd - start;
+      if (d < 0) return null;
+      const t = tubeT(y - y0, outer(dd), inner(dd));
+      return t > 0 ? [DN.glass * t, 0.02 * t / 4] : null;
+    });
+  }
+}
+function addSperm(F, L, hx, hy, headingDeg, phase, morph) {
+  // глава (сплескан елипсоид), средна част и опашка (тънки тръбички по вълниста линия)
+  const h = headingDeg * Math.PI / 180, ux = Math.cos(h), uy = Math.sin(h);
+  const [la, lb] = morph === "tapered" ? [3.3, 0.85] : [2.4, 1.5];      // полуоси на главата
+  const lc = 0.9;
+  paint(F, L, hx - 4, hy - 4, hx + 4, hy + 4, (x, y) => {
+    const u = (x - hx) * ux + (y - hy) * uy, v = -(x - hx) * uy + (y - hy) * ux;
+    const q = 1 - (u / la) ** 2 - (v / (lb * (u > 0 ? 0.9 : 1))) ** 2;   // леко по-тясна отпред
+    return q > 0 ? [DN.head * 2 * lc * Math.sqrt(q), 0.35 * Math.sqrt(q)] : null;
+  });
+  // средна част + опашка
+  let px = hx - ux * la, py = hy - uy * la;
+  const steps = 170, L_tail = 50, step = L_tail / steps;
+  for (let k = 0; k <= steps; k++) {
+    const s = k * step, mid = s < 4.5;
+    const amp = mid ? 0 : 3.6 * Math.min(1, (s - 4.5) / 30);
+    const w = Math.sin(0.28 * s - phase) * amp;
+    const x = px - ux * s - uy * w, y = py - uy * s + ux * w;
+    const rad = mid ? 0.55 : 0.32 * (1 - 0.5 * s / L_tail);
+    splat(F, L, x, y, rad, (mid ? DN.head * 0.9 : DN.tail) * rad * 1.6, mid ? 0.05 : 0.02);
+  }
+}
+
+/* ---------------- размиване ---------------- */
+function boxBlur(src, W, H, bbox, r) {
+  if (r < 1) return src;
+  const out = new Float32Array(src.length);
+  const pad = 3 * r;
+  const x0 = Math.max(0, bbox[0] - pad), x1 = Math.min(W - 1, bbox[2] + pad);
+  const y0 = Math.max(0, bbox[1] - pad), y1 = Math.min(H - 1, bbox[3] + pad);
+  let a = src, b = new Float32Array(src.length);
+  for (let pass = 0; pass < 3; pass++) {           // 3 минавания ≈ гаусово размиване
+    // хоризонтално
+    for (let j = y0; j <= y1; j++) {
+      const row = j * W; let acc = 0, n = 0;
+      for (let i = x0; i <= Math.min(x1, x0 + r); i++) { acc += a[row + i]; n++; }
+      for (let i = x0; i <= x1; i++) {
+        b[row + i] = acc / n;
+        const add = i + r + 1, rem = i - r;
+        if (add <= x1) { acc += a[row + add]; n++; }
+        if (rem >= x0) { acc -= a[row + rem]; n--; }
+      }
+    }
+    // вертикално
+    for (let i = x0; i <= x1; i++) {
+      let acc = 0, n = 0;
+      for (let j = y0; j <= Math.min(y1, y0 + r); j++) { acc += b[j * W + i]; n++; }
+      for (let j = y0; j <= y1; j++) {
+        out[j * W + i] = acc / n;
+        const add = j + r + 1, rem = j - r;
+        if (add <= y1) { acc += b[add * W + i]; n++; }
+        if (rem >= y0) { acc -= b[rem * W + i]; n--; }
+      }
+    }
+    if (pass < 2) { a = out.slice(); }
+  }
+  return out;
+}
+
+/* ---------------- изобразяване ---------------- */
+const BASE_RGB = [202, 206, 197];                   // сиво-зеленикав тон, като при камерите на микроскопите
+function render(F, P, focusFor) {
+  const { W, H } = F, N = W * H;
+  const opd = new Float32Array(N), ab = new Float32Array(N);
+  for (const L of F.layers) {
+    const blurUm = Math.abs(focusFor(L) - L.h);
+    const r = Math.round(Math.min(18, blurUm * 0.1 * F.s));
+    if (!L.cache || L.cache.r !== r) {
+      L.cache = { r, opd: boxBlur(L.opd, W, H, L.bbox, r), abs: boxBlur(L.abs, W, H, L.bbox, r) };
+    }
+    const o = L.cache.opd, a = L.cache.abs;
+    for (let i = 0; i < N; i++) { if (o[i]) opd[i] += o[i]; if (a[i]) ab[i] += a[i]; }
+  }
+  // оптиката никога не е идеално рязка: леко размиване на цялото изображение
+  const opdS = boxBlur(opd, W, H, [0, 0, W - 1, H - 1], 1);
+  const img = F.ctx.createImageData(W, H), d = img.data;
+  const noise = rng(4242);
+  const ang = P.ang * Math.PI / 180, lx = Math.cos(ang), ly = Math.sin(ang);
+  const R = Math.min(W, H) * 0.49, cx = W / 2, cy = H / 2;
+  for (let j = 0; j < H; j++) {
+    for (let i = 0; i < W; i++) {
+      const k = j * W + i;
+      // наклон на оптичната дебелина в посоката на светлината (на µm)
+      const gx = (opdS[k + (i < W - 1 ? 1 : 0)] - opdS[k - (i > 0 ? 1 : 0)]) * 0.5 * F.s;
+      const gy = (opdS[k + (j < H - 1 ? W : 0)] - opdS[k - (j > 0 ? W : 0)]) * 0.5 * F.s;
+      const slope = -(gx * lx + gy * ly);
+      // мек отговор: плавно насищане, без да стига до бяло и черно
+      const x = P.rel * slope * 1.8, relief = 0.27 * x / (1 + Math.abs(x) * 0.8);
+      // осветление: леко неравномерно поле + зърно
+      const nx = (i - cx) / R, ny = (j - cy) / R;
+      const illum = 0.9 + 0.045 * (-nx * lx - ny * ly) - 0.05 * (nx * nx + ny * ny);
+      let b = illum * (1 - P.abs * ab[k]) + relief + P.grain * 0.03 * F.grain[k] + (noise() - 0.5) * 0.02;
+      b = 0.62 + (b - 0.62) * 0.93;                  // малко по-нисък контраст, като на камера
+      // краят на зрителното поле
+      const rr = Math.sqrt(nx * nx + ny * ny);
+      if (rr > 0.94) b *= Math.max(0, 1 - (rr - 0.94) / 0.06);
+      const t = Math.max(0, Math.min(1.25, b / 0.9));
+      d[k * 4] = Math.min(255, BASE_RGB[0] * t);
+      d[k * 4 + 1] = Math.min(255, BASE_RGB[1] * t);
+      d[k * 4 + 2] = Math.min(255, BASE_RGB[2] * t + (1 - Math.min(1, t)) * 6);
+      d[k * 4 + 3] = 255;
+    }
+  }
+  F.ctx.putImageData(img, 0, 0);
+  // мащабна линия
+  const g = F.ctx, L = F.s * (F.s > 4 ? 10 : 50), x1 = W * 0.72, y = H * 0.9;
+  g.strokeStyle = "#1E1E1E"; g.lineWidth = 3; g.beginPath(); g.moveTo(x1, y); g.lineTo(x1 + L, y); g.stroke();
+  g.fillStyle = "#1E1E1E"; g.font = '500 14px "IBM Plex Sans", sans-serif'; g.textAlign = "center"; g.textBaseline = "bottom";
+  g.fillText(F.s > 4 ? "10 µm" : "50 µm", x1 + L / 2, y - 4);
+}
+
+/* ---------------- сцените ---------------- */
+function buildOocyteScene() {
+  const F = new Field($("cvO"), 2.05, 0, 0);
+  const Loo = F.layer(EQ, "ооцит");
+  addOocyte(F, Loo, 0, 0, 0);
+  const H = [F.layer(EQ, "holding близо"), F.layer(EQ + 12, "holding"), F.layer(EQ + 28, "holding далеч")];
+  addHoldingPipette(F, H, -ZONA_OUT - 1, 0, -1);
+  const I = [F.layer(EQ, "инж. близо"), F.layer(EQ + 10, "инж."), F.layer(EQ + 24, "инж. далеч")];
+  addInjectionPipette(F, I, ZONA_OUT + 14, 0, 1);
+  return F;
+}
+function buildSpermScene() {
+  const F = new Field($("cvS"), 7.2, 0, 0);
+  const Ls = F.layer(0, "сперматозоиди");
+  addSperm(F, Ls, -8, -16, 200, 0.4, "normal");
+  addSperm(F, Ls, 5, 20, 150, 2.1, "tapered");
+  const I = [F.layer(2, "инж. близо"), F.layer(5, "инж."), F.layer(10, "инж. далеч")];
+  addInjectionPipette(F, I, 14, -2, 1);
+  return F;
+}
+
+const DEFAULTS = { rel: 1.0, ang: 135, foc: 78, grain: 0.4, abs: 0.2 };
+const P = { ...DEFAULTS };
+let FO, FS;
+function showValues() {
+  $("oRel").textContent = P.rel.toFixed(2);
+  $("oAng").textContent = `${P.ang}°`;
+  $("oFoc").textContent = `${P.foc} µm`;
+  $("oGrain").textContent = P.grain.toFixed(2);
+  $("oAbs").textContent = P.abs.toFixed(2);
+}
+let pending = 0;
+function redraw() {
+  cancelAnimationFrame(pending);
+  pending = requestAnimationFrame(() => {
+    const t0 = performance.now();
+    render(FO, P, () => P.foc);
+    render(FS, P, () => 0);                       // при сперматозоидите фокусът е на дъното
+    $("status").textContent = `Пресметнато за ${Math.round(performance.now() - t0)} ms`;
+  });
+}
+function bind(id, key, parse = parseFloat) {
+  $(id).addEventListener("input", e => { P[key] = parse(e.target.value); dirty = true; showValues(); redraw(); });
+}
+bind("kRel", "rel"); bind("kAng", "ang", v => parseInt(v, 10)); bind("kFoc", "foc", v => parseInt(v, 10));
+bind("kGrain", "grain"); bind("kAbs", "abs");
+$("reset").addEventListener("click", () => {
+  Object.assign(P, DEFAULTS); dirty = true;
+  $("kRel").value = P.rel; $("kAng").value = P.ang; $("kFoc").value = P.foc; $("kGrain").value = P.grain; $("kAbs").value = P.abs;
+  showValues(); redraw();
+});
+
+/* ---------------- записване на предложенията ---------------- */
+let dirty = false;                                 // има промени след последното изпращане
+const store = {                                    // името се помни на това устройство (ако браузърът позволява)
+  get(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* няма памет - не е страшно */ } },
+};
+$("who").value = store.get("hoffman_who");
+$("who").addEventListener("change", () => store.set("hoffman_who", $("who").value.trim()));
+function stamp() {
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  const off = -d.getTimezoneOffset(), sign = off >= 0 ? "+" : "-";
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())} ` +
+         `UTC${sign}${z(Math.floor(Math.abs(off) / 60))}:${z(Math.abs(off) % 60)}`;
+}
+function record(kind) {
+  return {
+    time: stamp(), kind, name: $("who").value.trim() || "(без име)",
+    rel: P.rel, ang: P.ang, foc: P.foc, grain: P.grain, abs: P.abs,
+    comment: kind === "ръчно" ? $("note").value.trim() : "", version: PAGE_VERSION,
+  };
+}
+function asText(r) {
+  return `Hoffman настройки (${r.version}), ${r.time}, ${r.name}\n` +
+    `Сила на релефа: ${r.rel}; Посока на светлината: ${r.ang}°; Фокус: ${r.foc} µm; Зърно: ${r.grain}; Плътност на цитоплазмата: ${r.abs}` +
+    (r.comment ? `\nКоментар: ${r.comment}` : "");
+}
+function logMsg(t) { $("logStatus").textContent = t; }
+$("send").addEventListener("click", async () => {
+  const r = record("ръчно");
+  if (!LOG_URL) { logMsg("Записването още не е настроено. Натиснете „Копирай настройките“ и ги изпратете по имейл."); return; }
+  $("send").disabled = true; logMsg("Изпращане…");
+  try {
+    // text/plain без специални заглавки: браузърът не прави предварителна заявка, Google Apps Script го приема
+    await fetch(LOG_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(r), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+    dirty = false; $("note").value = "";
+    logMsg(`Изпратено в ${r.time.slice(11, 16)}. Благодаря!`);
+  } catch (e) {
+    logMsg("Не се изпрати (няма връзка?). Натиснете „Копирай настройките“ и ги изпратете по имейл.");
+  } finally { $("send").disabled = false; }
+});
+$("copy").addEventListener("click", async () => {
+  const t = asText(record("ръчно"));
+  try { await navigator.clipboard.writeText(t); logMsg("Копирано. Поставете го в имейл или съобщение."); }
+  catch (e) { window.prompt("Копирайте този текст:", t); }
+});
+// автоматичен запис при затваряне или скриване на страницата, само ако има промени
+function autoSend() {
+  if (!dirty || !LOG_URL || !navigator.sendBeacon) return;
+  const ok = navigator.sendBeacon(LOG_URL, new Blob([JSON.stringify(record("автоматично"))], { type: "text/plain;charset=utf-8" }));
+  if (ok) dirty = false;
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") autoSend(); });
+window.addEventListener("pagehide", autoSend);
+
+showValues();
+$("status").textContent = "Пресмятане…";
+setTimeout(() => { FO = buildOocyteScene(); FS = buildSpermScene(); redraw(); }, 20);
+</script>
+</body>
+</html>
